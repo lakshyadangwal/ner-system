@@ -171,32 +171,40 @@ def _merge_adjacent_fragments(entities, text):
 
     The transformers pipeline (even with aggregation_strategy="simple")
     sometimes returns subword fragments as separate entities for uncommon
-    words (e.g. "La" and "##hya Dangwal" for "Lakshya Dangwal", or "Ad" and
-    "Shibu" for "Aditya Shibu" when the middle subword is dropped). This
-    function joins consecutive fragments with the same label that are
-    adjacent (or separated by a small subword-boundary gap) into a single
-    entity, using the original text for the merged span so "##" prefixes are
-    stripped. A gap of up to 5 characters is tolerated to recover dropped
-    subwords inside a name.
+    words (e.g. "Ad" and "Shibu" for "Aditya Shibu" when the middle subword
+    "##itya" is dropped). This function joins consecutive fragments with the
+    same label when the gap between them contains no whitespace (i.e. it is a
+    pure subword-boundary gap, not a real word separating two entities).
+
+    We deliberately do NOT merge across whitespace, because that would wrongly
+    join distinct entities such as "Narendra Modi" + "Joe Biden" (separated by
+    " met ").
     """
     if not entities:
         return entities
 
-    # Sort by start position.
     entities = sorted(entities, key=lambda e: (e["start"], e["end"]))
     merged = [dict(entities[0])]
 
     for ent in entities[1:]:
         prev = merged[-1]
-        # Same label and adjacent (gap of 0-5 chars allows for dropped
-        # subword fragments between pieces of the same name).
         same_label = ent["label"] == prev["label"]
-        adjacent = ent["start"] <= prev["end"] + 5
-        if same_label and adjacent:
-            # Merge: extend the previous span to cover this fragment.
+        gap = text[prev["end"]:ent["start"]]
+        gap_stripped = gap.strip()
+        # Common short words that separate two distinct entities (e.g. "Modi met Joe").
+        # If the gap is just such a word, do NOT merge.
+        separator_words = {
+            "a", "an", "the", "is", "am", "are", "was", "were", "be", "been",
+            "in", "on", "at", "to", "for", "of", "and", "or", "but", "with",
+            "by", "from", "as", "into", "via", "per", "vs", "meet", "met",
+        }
+        is_separator = gap_stripped.lower() in separator_words
+        # Only bridge gaps that are pure subword artifacts (no separator word)
+        # and short enough to be a dropped subword (<= 10 chars).
+        gap_is_subword = (not is_separator) and len(gap) <= 10
+        if same_label and gap_is_subword:
             prev["end"] = max(prev["end"], ent["end"])
             prev["text"] = text[prev["start"]:prev["end"]]
-            # Keep the higher confidence score.
             prev["score"] = max(prev["score"], ent["score"])
         else:
             merged.append(dict(ent))
