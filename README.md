@@ -17,6 +17,21 @@ Given any free-text input, extract named entities and present them:
 - in a pandas table (Entity | Label | Confidence)
 - with per-category counts and a CSV download option
 
+## 10-Stage Project Development Mapping
+
+| # | Stage | Where it's covered in this project |
+|---|-------|-----------------------------------|
+| 1 | **Problem Identification** | `README.md` — "Project goal"; `REPORT.md` — Introduction & Objective |
+| 2 | **Dataset Collection** | `train.py` — `load_conll2003()` loads CoNLL-2003 from Hugging Face Hub (`tomaarsen/conll2003`) |
+| 3 | **Data Cleaning** | CoNLL-2003 is pre-cleaned; `REPORT.md` — Dataset section notes the data is ready-to-use |
+| 4 | **Text Preprocessing** | `train.py` — tokenization with `AutoTokenizer` (`is_split_into_words=True`), subword label alignment via `word_ids()` |
+| 5 | **EDA** | `label_distribution.png` — token-level label distribution chart across all splits |
+| 6 | **Feature Engineering** | DistilBERT WordPiece embeddings via `AutoModelForTokenClassification`; `id2label`/`label2id` maps |
+| 7 | **Model Development** | `train.py` — fine-tuning with Hugging Face `Trainer`, `DataCollatorForTokenClassification` |
+| 8 | **Model Evaluation** | `metrics.json` — precision, recall, F1, accuracy (overall + per-entity) via `seqeval` |
+| 9 | **GUI Development** | `app.py` — Streamlit web interface with highlights, table, counts, CSV download |
+| 10 | **Testing & Implementation** | 10 test cases verified (PER/ORG/LOC/MISC/DATE, empty text, special chars, long text, offsets) |
+
 ## Folder structure
 
 ```

@@ -197,3 +197,19 @@ external APIs.
 - Train on additional data/domains (e.g., OntoNotes, social media).
 - Add confidence-threshold slider and batch/file processing.
 - Support more entity types and containerise the deployment.
+
+## 10. Project Development Stage Mapping
+
+| # | Stage | Implementation Evidence |
+|---|-------|------------------------|
+| 1 | **Problem Identification** | Section 1 (Introduction) & Section 2 (Objective) — identify the need to extract PER/ORG/LOC/MISC/DATE entities from free text |
+| 2 | **Dataset Collection** | Section 3 (Dataset) — CoNLL-2003 loaded from Hugging Face Hub (`tomaarsen/conll2003`); 14,041 train / 3,250 val / 3,453 test sentences |
+| 3 | **Data Cleaning** | CoNLL-2003 is pre-cleaned (tokenized, annotated, no missing values); no additional cleaning required |
+| 4 | **Text Preprocessing** | Section 4.2 — WordPiece tokenization via `AutoTokenizer`; subword label alignment via `word_ids()`; first subword gets label, others get -100 |
+| 5 | **EDA** | `label_distribution.png` — token-level label distribution across all splits; printed split sizes and label counts |
+| 6 | **Feature Engineering** | Section 4.3 — DistilBERT WordPiece contextual embeddings; `id2label`/`label2id` maps built from dataset label list |
+| 7 | **Model Development** | Section 4.4 — `AutoModelForTokenClassification` fine-tuned with Hugging Face `Trainer` + `DataCollatorForTokenClassification` on PyTorch MPS |
+| 8 | **Model Evaluation** | Section 6 (Results) — test F1=0.8934, precision=0.8853, recall=0.9017, accuracy=0.9787; per-entity precision/recall/F1/support in `metrics.json` |
+| 9 | **GUI Development** | Section 5.3 — Streamlit app (`app.py`) with colour-coded highlights, entity table, per-category counts, CSV download, error handling |
+| 10 | **Testing & Implementation** | 10 test cases verified (PER/ORG/LOC/MISC/DATE detection, empty text, special characters `<>&`, long text chunking, correct character offsets); Streamlit health endpoint returns `ok` |
+
