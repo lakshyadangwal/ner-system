@@ -1,0 +1,49 @@
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+*.egg-info/
+*.egg
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Generated artifacts (created by running train.py / ner_engine.py)
+model/
+metrics.json
+label_distribution.png
+training.log
+
+# Streamlit
+streamlit.log
+.streamlit/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Temporary
+*.tmp
+*.log
