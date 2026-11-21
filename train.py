@@ -54,6 +54,7 @@ from seqeval.metrics import (
 # ---------------------------------------------------------------------------
 MODEL_NAME = "distilbert-base-cased"  # default; overridable with --model-name
 OUTPUT_DIR = "./model"                # where the fine-tuned model/tokenizer are saved
+CHECKPOINT_DIR = "./checkpoints"      # intermediate training checkpoints
 LABEL_DIST_PLOT = "label_distribution.png"
 METRICS_FILE = "metrics.json"
 
@@ -343,7 +344,7 @@ def main():
     trainer_token_kwarg = "processing_class" if "processing_class" in trainer_params else "tokenizer"
 
     training_args = TrainingArguments(
-        output_dir=OUTPUT_DIR,
+        output_dir=CHECKPOINT_DIR,
         learning_rate=LEARNING_RATE,
         per_device_train_batch_size=PER_DEVICE_BATCH_SIZE,
         per_device_eval_batch_size=PER_DEVICE_BATCH_SIZE,

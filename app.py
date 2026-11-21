@@ -97,12 +97,15 @@ def highlight_text(text, entities):
 
 
 def entity_table(entities):
-    """Return a pandas DataFrame of entities."""
+    """
+    Return a pandas DataFrame of entities. DATE entities come from spaCy's
+    rule-based NER, which has no confidence score, so they show "rule-based".
+    """
     rows = [
         {
             "Entity": ent["text"],
             "Label": ent["label"],
-            "Confidence": round(ent["score"], 3),
+            "Confidence": "rule-based" if ent["label"] == "DATE" else round(ent["score"], 3),
             "Start": ent["start"],
             "End": ent["end"],
         }
@@ -125,6 +128,11 @@ with st.sidebar:
         st.caption(f'Model: {metrics.get("model_name", "unknown")}')
         st.caption(f'Dataset: {metrics.get("dataset", "unknown")}')
         st.caption(f'Epochs: {metrics.get("epochs", "unknown")}')
+        if metrics.get("smoke_test"):
+            st.warning(
+                "This model is from a smoke-test run (small subset, 1 epoch), "
+                "so predictions will be poor. Run `python train.py` for full training."
+            )
     else:
         st.info("metrics.json not found. Train with `python train.py`.")
     st.divider()

@@ -104,23 +104,15 @@ def _spans_overlap(a_start, a_end, b_start, b_end):
     return a_start < b_end and b_start < a_end
 
 
-def _safe_chunk_words(tokenizer, target_words=CHUNK_WORDS, max_tokens=None):
+def _max_chunk_tokens(tokenizer):
     """
-    Estimate how many words fit in one chunk without exceeding the model's
-    maximum sequence length. Reserves 2 tokens for special tokens ([CLS]/[SEP]).
+    Token budget for one chunk: the model's maximum sequence length minus
+    2 tokens reserved for the special tokens ([CLS]/[SEP]).
     """
-    if max_tokens is None:
-        max_tokens = getattr(tokenizer, "model_max_length", 512) or 512
+    max_tokens = getattr(tokenizer, "model_max_length", 512) or 512
     max_tokens -= 2  # room for special tokens
     if max_tokens < 16:
         max_tokens = 510
-    # Estimate tokens-per-word from a small sample so chunks stay near, but
-    # under, the token limit (avoids pipeline truncation losing entities).
-    sample_words = min(60, target_words)
-    sample_text = " ".join(["word"] * sample_words)  # placeholder, replaced below
-    # We measure the ratio lazily in _chunk_spans using real text; here we just
-    # return the token budget. The per-call ratio computation happens in
-    # _chunk_spans where real text is available.
     return max_tokens
 
 
@@ -137,7 +129,7 @@ def _chunk_spans(text, tokenizer, target_words=CHUNK_WORDS):
     if not word_spans:
         return [(text, 0)]
 
-    max_tokens = _safe_chunk_words(tokenizer)
+    max_tokens = _max_chunk_tokens(tokenizer)
     # Estimate tokens-per-word from a real sample of this text.
     sample_n = min(50, len(word_spans))
     sample_end = word_spans[sample_n - 1].end()
@@ -172,47 +164,47 @@ def _merge_adjacent_fragments(entities, text):
     The transformers pipeline (even with aggregation_strategy="simple")
     sometimes returns subword fragments as separate entities for uncommon
     words (e.g. "Ad" and "Shibu" for "Aditya Shibu" when the middle subword
-    "##itya" is dropped). This function joins consecutive fragments with the
-    same label when the gap between them contains no whitespace (i.e. it is a
-    pure subword-boundary gap, not a real word separating two entities).
+    "##itya" is dropped), or cuts a word short (e.g. "Sundar Picha").
 
-    We do NOT merge when the gap is a separator word (e.g. "Narendra Modi met
-    Joe Biden") or contains punctuation (e.g. "Paris, London"), since those
-    are distinct entities.
+    Each entity is first widened to whole-word boundaries, then consecutive
+    entities with the same label are joined only when nothing but whitespace
+    separates them. So "Aditya Shibu" is joined, while "Narendra Modi met Joe
+    Biden" and "Paris, London" stay separate entities.
     """
     if not entities:
         return entities
 
-    entities = sorted(entities, key=lambda e: (e["start"], e["end"]))
-    merged = [dict(entities[0])]
+    entities = sorted(
+        (_snap_to_words(ent, text) for ent in entities),
+        key=lambda e: (e["start"], e["end"]),
+    )
+    merged = [entities[0]]
 
     for ent in entities[1:]:
         prev = merged[-1]
         same_label = ent["label"] == prev["label"]
         gap = text[prev["end"]:ent["start"]]
-        gap_stripped = gap.strip()
-        # Common short words that separate two distinct entities (e.g. "Modi met Joe").
-        # If the gap is just such a word, do NOT merge.
-        separator_words = {
-            "a", "an", "the", "is", "am", "are", "was", "were", "be", "been",
-            "in", "on", "at", "to", "for", "of", "and", "or", "but", "with",
-            "by", "from", "as", "into", "via", "per", "vs", "meet", "met",
-        }
-        is_separator = gap_stripped.lower() in separator_words
-        # Punctuation in the gap means two separate entities,
-        # e.g. "Paris, London" or "Google; Microsoft".
-        has_punct = any(ch in ",;:()[]{}|/&\"\n" for ch in gap)
-        # Only bridge gaps that are pure subword artifacts (no separator word)
-        # and short enough to be a dropped subword (<= 10 chars).
-        gap_is_subword = (not is_separator) and (not has_punct) and len(gap) <= 10
-        if same_label and gap_is_subword:
+        if same_label and not gap.strip():
             prev["end"] = max(prev["end"], ent["end"])
             prev["text"] = text[prev["start"]:prev["end"]]
             prev["score"] = max(prev["score"], ent["score"])
         else:
-            merged.append(dict(ent))
+            merged.append(ent)
 
     return merged
+
+
+def _snap_to_words(ent, text):
+    """
+    Return a copy of `ent` widened so it starts and ends on word boundaries
+    (e.g. "Picha" inside "Pichai" becomes "Pichai").
+    """
+    start, end = ent["start"], ent["end"]
+    while start > 0 and text[start - 1].isalnum():
+        start -= 1
+    while end < len(text) and text[end].isalnum():
+        end += 1
+    return {**ent, "start": start, "end": end, "text": text[start:end]}
 
 
 def _model_entities(text):
