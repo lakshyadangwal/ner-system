@@ -26,6 +26,8 @@ from transformers import pipeline
 # CONFIGURATION
 # ---------------------------------------------------------------------------
 MODEL_DIR = "./model"
+# Used when ./model does not exist. Downloaded once and cached by Hugging Face.
+HF_MODEL_ID = "aryanmaurya006/ner-distilbert-conll2003"
 CHUNK_WORDS = 400          # long text is split into chunks of ~400 words
 CANONICAL_LABELS = ("PER", "ORG", "LOC", "MISC", "DATE")
 
@@ -33,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 
 class ModelNotFoundError(RuntimeError):
-    """Raised when the fine-tuned model directory is missing."""
+    """Raised when the model is not in ./model and cannot be downloaded."""
     pass
 
 
@@ -51,24 +53,31 @@ def _get_device():
     return "cpu"
 
 
+def model_source():
+    """Local ./model if it exists (e.g. after python train.py), otherwise the Hugging Face model."""
+    return MODEL_DIR if os.path.isdir(MODEL_DIR) else HF_MODEL_ID
+
+
 def _get_pipeline():
     """Lazy-load and cache the token-classification pipeline."""
     global _pipeline
     if _pipeline is None:
-        if not os.path.isdir(MODEL_DIR):
-            raise ModelNotFoundError(
-                f"Model directory '{MODEL_DIR}' not found. "
-                "Train the model first: python train.py"
-            )
+        source = model_source()
         device = _get_device()
-        logger.info("Loading token-classification pipeline from %s (device=%s)", MODEL_DIR, device)
-        _pipeline = pipeline(
-            "token-classification",
-            model=MODEL_DIR,
-            tokenizer=MODEL_DIR,
-            aggregation_strategy="simple",
-            device=device,
-        )
+        logger.info("Loading token-classification pipeline from %s (device=%s)", source, device)
+        try:
+            _pipeline = pipeline(
+                "token-classification",
+                model=source,
+                tokenizer=source,
+                aggregation_strategy="simple",
+                device=device,
+            )
+        except OSError as exc:
+            raise ModelNotFoundError(
+                f"Could not load the model from '{source}'. Check your internet "
+                "connection, or train a local model with: python train.py"
+            ) from exc
     return _pipeline
 
 
@@ -271,18 +280,13 @@ def extract_entities(text):
     Returns a list of dicts: {text, label, start, end, score}.
     Labels are always one of PER, ORG, LOC, MISC, DATE.
 
-    Raises ModelNotFoundError if ./model is missing.
+    Uses ./model if present, otherwise downloads the model from Hugging Face.
+    Raises ModelNotFoundError if neither is available.
     Returns [] for empty input.
     Long text is split into ~400-word chunks with correct character offsets.
     """
     if not text or not text.strip():
         return []
-
-    if not os.path.isdir(MODEL_DIR):
-        raise ModelNotFoundError(
-            f"Model directory '{MODEL_DIR}' not found. "
-            "Train the model first: python train.py"
-        )
 
     # Get the (cached) pipeline once; also reuse its tokenizer for chunking so
     # chunks never exceed the model's max sequence length.

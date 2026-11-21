@@ -126,6 +126,12 @@ If PowerShell blocks `Activate.ps1`, you can skip activation and call
 
 ## How to train
 
+Training is optional. The fully trained model is published on Hugging Face as
+[aryanmaurya006/ner-distilbert-conll2003](https://huggingface.co/aryanmaurya006/ner-distilbert-conll2003).
+If there is no `./model` folder, the app and `ner_engine.py` download it
+automatically on first use (about 250 MB, cached after that). If you train
+your own model, `./model` is used instead.
+
 ```bash
 # Quick smoke test (500 train / 200 val samples, 1 epoch) — verifies everything works
 python train.py --smoke
@@ -149,10 +155,19 @@ On Windows, run full training with `python train.py > training.log 2>&1`
 python -m unittest discover tests -v
 ```
 
-The helper tests run without a model. The end-to-end tests need a fully
-trained model in `./model` and are skipped if it is missing.
+The helper tests run without a model. The end-to-end tests use `./model` if it
+exists, otherwise they download the model from Hugging Face (needs internet
+the first time).
 
 ## How to run the app
+
+With uv:
+
+```bash
+uv run streamlit run app.py
+```
+
+With pip and a venv:
 
 ```bash
 source venv/bin/activate

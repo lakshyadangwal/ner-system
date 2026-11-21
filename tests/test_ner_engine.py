@@ -4,14 +4,12 @@ Tests for ner_engine.py.
 Run from the project folder:
     python -m unittest discover tests -v
 
-The helper tests run without a trained model. The end-to-end tests need the
-fine-tuned model in ./model and are skipped if it is missing.
+The helper tests run without a trained model. The end-to-end tests use
+./model if it exists, otherwise the model is downloaded from Hugging Face.
 """
 
-import os
 import unittest
 
-import ner_engine
 from ner_engine import (
     _merge_adjacent_fragments,
     _merge_entities,
@@ -67,7 +65,6 @@ class TestHelpers(unittest.TestCase):
                          [("May Smith", "PER"), ("5 May 2024", "DATE")])
 
 
-@unittest.skipUnless(os.path.isdir(ner_engine.MODEL_DIR), "trained model not found in ./model")
 class TestExtractEntities(unittest.TestCase):
     def labels_for(self, text):
         return {(e["text"], e["label"]) for e in extract_entities(text)}

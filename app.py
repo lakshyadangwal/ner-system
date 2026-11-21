@@ -16,13 +16,18 @@ import os
 import pandas as pd
 import streamlit as st
 
-from ner_engine import extract_entities, ModelNotFoundError, CANONICAL_LABELS
+from ner_engine import (
+    extract_entities,
+    model_source,
+    ModelNotFoundError,
+    CANONICAL_LABELS,
+    HF_MODEL_ID,
+)
 
 # ---------------------------------------------------------------------------
 # CONFIGURATION
 # ---------------------------------------------------------------------------
 METRICS_FILE = "metrics.json"
-MODEL_DIR = "./model"
 
 # Entity -> colour (used for the legend, the highlights and the count bar).
 # Muted ink tones that stay readable on both light and dark themes.
@@ -275,10 +280,11 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-if not os.path.isdir(MODEL_DIR):
-    st.error(
-        "Model not found at ./model. Train it first by running:\n"
-        "`python train.py` (or `python train.py --smoke` for a quick test)."
+if model_source() == HF_MODEL_ID:
+    st.caption(
+        f"No local ./model found, so the model is loaded from Hugging Face "
+        f"([{HF_MODEL_ID}](https://huggingface.co/{HF_MODEL_ID})). "
+        "The first run downloads about 250 MB"
     )
 
 # Sample-text loader. The text area is bound to st.session_state["text_area"],
@@ -334,7 +340,7 @@ if extract_clicked:
         try:
             entities = extract_entities(text_to_process)
         except ModelNotFoundError as exc:
-            st.error(str(exc) + " Run `python train.py` first.")
+            st.error(str(exc))
             entities = []
         except Exception as exc:  # noqa: BLE001 - show a friendly UI error
             st.error(f"Unexpected error during extraction: {exc}")
