@@ -66,31 +66,34 @@ def load_metrics():
 def highlight_text(text, entities):
     """
     Build HTML with entities highlighted using non-overlapping spans.
-    Entities are sorted by start position; later entities override earlier ones
-    on overlap. Characters are escaped to be safe with unsafe_allow_html.
+    Entities are sorted by start position; an entity overlapping an earlier
+    one is skipped. All text (inside and outside entities) is escaped so it is
+    safe with unsafe_allow_html.
     """
     if not entities:
         return html.escape(text)
 
-    # Sort by start (descending) so we can splice from the end without
-    # disturbing earlier offsets.
-    sorted_ents = sorted(entities, key=lambda e: e["start"], reverse=True)
-    result = text
+    sorted_ents = sorted(entities, key=lambda e: (e["start"], e["end"]))
+    parts = []
+    pos = 0
     for ent in sorted_ents:
         start, end = ent["start"], ent["end"]
+        if start < pos:
+            continue  # overlaps the previous entity
         label = ent["label"]
         colour = ENTITY_COLOURS.get(label, "#666666")
-        chunk = html.escape(result[start:end])
-        replacement = (
+        parts.append(html.escape(text[pos:start]))
+        parts.append(
             f"<span style='background-color:{colour}; color:#fff; "
             f"border-radius:4px; padding:1px 6px; font-size:0.85em; "
             f"font-weight:600; margin:1px 0; display:inline-block;' "
-            f"title='{html.escape(label)}'>{chunk}"
+            f"title='{html.escape(label)}'>{html.escape(text[start:end])}"
             f"<span style='font-size:0.65em; opacity:0.9;'>[{html.escape(label)}]</span>"
             f"</span>"
         )
-        result = result[:start] + replacement + result[end:]
-    return result
+        pos = end
+    parts.append(html.escape(text[pos:]))
+    return "".join(parts)
 
 
 def entity_table(entities):
@@ -152,15 +155,21 @@ if not os.path.isdir(MODEL_DIR):
         "`python train.py` (or `python train.py --smoke` for a quick test)."
     )
 
-# Sample-text loader using session_state.
-if "load_sample" not in st.session_state:
-    st.session_state.load_sample = None
+# Sample-text loader. The text area is bound to st.session_state["text_area"],
+# so the sample buttons update it through an on_click callback (callbacks run
+# before the widget is created, which Streamlit requires).
+if "text_area" not in st.session_state:
+    st.session_state.text_area = ""
+
+
+def load_sample(sample):
+    st.session_state.text_area = sample
+
 
 col1, col2 = st.columns([5, 1])
 with col1:
     text_input = st.text_area(
         "Enter text",
-        value=st.session_state.get("text_area", ""),
         height=200,
         placeholder="e.g. Sundar Pichai met Narendra Modi in Delhi on 5 March 2024 ...",
         key="text_area",
@@ -172,9 +181,13 @@ with col2:
 sample_cols = st.columns(len(SAMPLE_TEXTS))
 for i, (name, sample) in enumerate(SAMPLE_TEXTS.items()):
     with sample_cols[i]:
-        if st.button(f"Load sample: {name}", use_container_width=True, key=f"sample_{i}"):
-            st.session_state.text_area = sample
-            st.rerun()
+        st.button(
+            f"Load sample: {name}",
+            use_container_width=True,
+            key=f"sample_{i}",
+            on_click=load_sample,
+            args=(sample,),
+        )
 
 # Determine the text to process (session_state is updated by the sample buttons).
 text_to_process = st.session_state.get("text_area", "")
@@ -206,7 +219,7 @@ if extract_clicked:
         st.markdown(
             f"<div style='font-size:1.1em; line-height:1.7; "
             f"border:1px solid #ddd; border-radius:6px; padding:1rem; "
-            f"background:#fafafa;'>{highlighted}</div>",
+            f"background:#fafafa; color:#1a1a1a;'>{highlighted}</div>",
             unsafe_allow_html=True,
         )
 
