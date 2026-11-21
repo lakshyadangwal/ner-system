@@ -176,6 +176,22 @@ Per entity:
 Full details are in `metrics.json`. The test F1 of 0.8934 lies within the
 expected ≈ 0.88–0.92 range for DistilBERT (BERT would be slightly higher).
 
+### Reproducibility check
+
+The full training was repeated on a different machine (Windows 11, CPU only,
+no GPU) with the same script and seed. It took about 55 minutes and gave:
+
+| Run                    | Precision | Recall | F1     | Accuracy |
+|------------------------|-----------|--------|--------|----------|
+| Apple Silicon (MPS)    | 0.8853    | 0.9017 | 0.8934 | 0.9787   |
+| Windows 11 (CPU)       | 0.8856    | 0.9003 | 0.8929 | 0.9786   |
+
+The difference in F1 is 0.0005, so the results are reproducible across
+hardware. The `metrics.json` committed in the repository is from the Windows
+run. The small gap comes from floating-point differences between the MPS
+and CPU backends. The validation F1 after the first epoch was already 0.903,
+so most of the learning happens in epoch 1.
+
 ## 7. Limitations
 
 - Trained only on English newswire (CoNLL-2003); other domains may degrade.
@@ -188,8 +204,8 @@ expected ≈ 0.88–0.92 range for DistilBERT (BERT would be slightly higher).
 The project delivers a complete, locally-run NER system: a fine-tuned
 DistilBERT model for PER/ORG/LOC/MISC, spaCy-based DATE detection, conflict-free
 span merging, and a Streamlit GUI with highlights, a data table, counts and CSV
-export. All code runs free on an Apple Silicon Mac with the MPS backend and no
-external APIs.
+export. All code runs free on an Apple Silicon Mac with the MPS backend, and
+also on a Windows laptop CPU with near-identical results, with no external APIs.
 
 ## 9. Future Work
 
@@ -211,5 +227,5 @@ external APIs.
 | 7 | **Model Development** | Section 4.4 — `AutoModelForTokenClassification` fine-tuned with Hugging Face `Trainer` + `DataCollatorForTokenClassification` on PyTorch MPS |
 | 8 | **Model Evaluation** | Section 6 (Results) — test F1=0.8934, precision=0.8853, recall=0.9017, accuracy=0.9787; per-entity precision/recall/F1/support in `metrics.json` |
 | 9 | **GUI Development** | Section 5.3 — Streamlit app (`app.py`) with colour-coded highlights, entity table, per-category counts, CSV download, error handling |
-| 10 | **Testing & Implementation** | 10 test cases verified (PER/ORG/LOC/MISC/DATE detection, empty text, special characters `<>&`, long text chunking, correct character offsets); Streamlit health endpoint returns `ok` |
+| 10 | **Testing & Implementation** | `tests/test_ner_engine.py` — 11 automated unit tests (PER/ORG/LOC/DATE detection, fragment-merging rules, empty text, special characters, long text chunking, correct character offsets), run with `python -m unittest discover tests -v`; Streamlit health endpoint returns `ok` |
 
