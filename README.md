@@ -140,14 +140,25 @@ Entities**, and view the colour-coded highlights, entity table and counts.
 
 ## Results
 
-Metrics are written to `metrics.json` by `train.py`. Key numbers from the
-full DistilBERT run (see `metrics.json` and `REPORT.md` for the per-entity
-breakdown):
+Full DistilBERT run (3 epochs) on the CoNLL-2003 test set (3,453 sentences).
+Numbers below are from `metrics.json`; see `REPORT.md` for more detail.
 
-- Test F1: see `metrics.json` -> `overall.f1` (expected ≈ 0.88–0.92 for DistilBERT)
-- Test precision / recall / accuracy: see `metrics.json` -> `overall`
+| Entity      | Precision | Recall | F1     | Support |
+|-------------|-----------|--------|--------|---------|
+| PER         | 0.9610    | 0.9450 | 0.9529 | 1,617   |
+| ORG         | 0.8487    | 0.8814 | 0.8647 | 1,661   |
+| LOC         | 0.9180    | 0.9197 | 0.9188 | 1,668   |
+| MISC        | 0.7394    | 0.7963 | 0.7668 | 702     |
+| **Overall** | **0.8856** | **0.9003** | **0.8929** | 5,648 |
 
-The `label_distribution.png` chart shows the CoNLL-2003 label distribution.
+Token accuracy: 0.9786. The test F1 of 0.893 is within the expected
+0.88–0.92 range for DistilBERT. MISC is the weakest class because it mixes
+nationalities, events and other names with fewer examples.
+
+DATE is not in this table because it comes from spaCy, not the trained model.
+
+The `label_distribution.png` chart shows the CoNLL-2003 label distribution
+(the "O" label dominates, which is why F1 is reported instead of accuracy).
 
 ## How CoNLL-2003's missing DATE label is handled
 
