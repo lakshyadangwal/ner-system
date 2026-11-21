@@ -164,47 +164,47 @@ def _merge_adjacent_fragments(entities, text):
     The transformers pipeline (even with aggregation_strategy="simple")
     sometimes returns subword fragments as separate entities for uncommon
     words (e.g. "Ad" and "Shibu" for "Aditya Shibu" when the middle subword
-    "##itya" is dropped). This function joins consecutive fragments with the
-    same label when the gap between them is short enough to be a dropped
-    subword (<= 10 chars).
+    "##itya" is dropped), or cuts a word short (e.g. "Sundar Picha").
 
-    We do NOT merge when the gap is a separator word (e.g. "Narendra Modi met
-    Joe Biden") or contains punctuation (e.g. "Paris, London"), since those
-    are distinct entities.
+    Each entity is first widened to whole-word boundaries, then consecutive
+    entities with the same label are joined only when nothing but whitespace
+    separates them. So "Aditya Shibu" is joined, while "Narendra Modi met Joe
+    Biden" and "Paris, London" stay separate entities.
     """
     if not entities:
         return entities
 
-    entities = sorted(entities, key=lambda e: (e["start"], e["end"]))
-    merged = [dict(entities[0])]
+    entities = sorted(
+        (_snap_to_words(ent, text) for ent in entities),
+        key=lambda e: (e["start"], e["end"]),
+    )
+    merged = [entities[0]]
 
     for ent in entities[1:]:
         prev = merged[-1]
         same_label = ent["label"] == prev["label"]
         gap = text[prev["end"]:ent["start"]]
-        gap_stripped = gap.strip()
-        # Common short words that separate two distinct entities (e.g. "Modi met Joe").
-        # If the gap is just such a word, do NOT merge.
-        separator_words = {
-            "a", "an", "the", "is", "am", "are", "was", "were", "be", "been",
-            "in", "on", "at", "to", "for", "of", "and", "or", "but", "with",
-            "by", "from", "as", "into", "via", "per", "vs", "meet", "met",
-        }
-        is_separator = gap_stripped.lower() in separator_words
-        # Punctuation in the gap means two separate entities,
-        # e.g. "Paris, London" or "Google; Microsoft".
-        has_punct = any(ch in ",;:()[]{}|/&\"\n" for ch in gap)
-        # Only bridge gaps that are pure subword artifacts (no separator word)
-        # and short enough to be a dropped subword (<= 10 chars).
-        gap_is_subword = (not is_separator) and (not has_punct) and len(gap) <= 10
-        if same_label and gap_is_subword:
+        if same_label and not gap.strip():
             prev["end"] = max(prev["end"], ent["end"])
             prev["text"] = text[prev["start"]:prev["end"]]
             prev["score"] = max(prev["score"], ent["score"])
         else:
-            merged.append(dict(ent))
+            merged.append(ent)
 
     return merged
+
+
+def _snap_to_words(ent, text):
+    """
+    Return a copy of `ent` widened so it starts and ends on word boundaries
+    (e.g. "Picha" inside "Pichai" becomes "Pichai").
+    """
+    start, end = ent["start"], ent["end"]
+    while start > 0 and text[start - 1].isalnum():
+        start -= 1
+    while end < len(text) and text[end].isalnum():
+        end += 1
+    return {**ent, "start": start, "end": end, "text": text[start:end]}
 
 
 def _model_entities(text):
