@@ -104,23 +104,15 @@ def _spans_overlap(a_start, a_end, b_start, b_end):
     return a_start < b_end and b_start < a_end
 
 
-def _safe_chunk_words(tokenizer, target_words=CHUNK_WORDS, max_tokens=None):
+def _max_chunk_tokens(tokenizer):
     """
-    Estimate how many words fit in one chunk without exceeding the model's
-    maximum sequence length. Reserves 2 tokens for special tokens ([CLS]/[SEP]).
+    Token budget for one chunk: the model's maximum sequence length minus
+    2 tokens reserved for the special tokens ([CLS]/[SEP]).
     """
-    if max_tokens is None:
-        max_tokens = getattr(tokenizer, "model_max_length", 512) or 512
+    max_tokens = getattr(tokenizer, "model_max_length", 512) or 512
     max_tokens -= 2  # room for special tokens
     if max_tokens < 16:
         max_tokens = 510
-    # Estimate tokens-per-word from a small sample so chunks stay near, but
-    # under, the token limit (avoids pipeline truncation losing entities).
-    sample_words = min(60, target_words)
-    sample_text = " ".join(["word"] * sample_words)  # placeholder, replaced below
-    # We measure the ratio lazily in _chunk_spans using real text; here we just
-    # return the token budget. The per-call ratio computation happens in
-    # _chunk_spans where real text is available.
     return max_tokens
 
 
@@ -137,7 +129,7 @@ def _chunk_spans(text, tokenizer, target_words=CHUNK_WORDS):
     if not word_spans:
         return [(text, 0)]
 
-    max_tokens = _safe_chunk_words(tokenizer)
+    max_tokens = _max_chunk_tokens(tokenizer)
     # Estimate tokens-per-word from a real sample of this text.
     sample_n = min(50, len(word_spans))
     sample_end = word_spans[sample_n - 1].end()
@@ -173,8 +165,8 @@ def _merge_adjacent_fragments(entities, text):
     sometimes returns subword fragments as separate entities for uncommon
     words (e.g. "Ad" and "Shibu" for "Aditya Shibu" when the middle subword
     "##itya" is dropped). This function joins consecutive fragments with the
-    same label when the gap between them contains no whitespace (i.e. it is a
-    pure subword-boundary gap, not a real word separating two entities).
+    same label when the gap between them is short enough to be a dropped
+    subword (<= 10 chars).
 
     We do NOT merge when the gap is a separator word (e.g. "Narendra Modi met
     Joe Biden") or contains punctuation (e.g. "Paris, London"), since those
