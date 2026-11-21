@@ -39,7 +39,9 @@ ner-system/
   train.py            # Fine-tuning script (CoNLL-2003 -> ./model)
   ner_engine.py       # Inference engine: model + spaCy, merging, chunking
   app.py              # Streamlit GUI
-  requirements.txt    # Pinned package versions
+  pyproject.toml      # Project dependencies (used by uv)
+  uv.lock             # Exact locked versions for uv
+  requirements.txt    # Pinned package versions (for plain pip)
   README.md           # This file
   REPORT.md           # Full project report
   VIVA.md             # 15 viva questions & answers
@@ -59,9 +61,32 @@ ner-system/
 - **No fp16/bf16 flags**, **no paid APIs**, **no API keys** —
   everything runs locally and free
 - On Mac, before training: `export PYTORCH_ENABLE_MPS_FALLBACK=1`
-- Python 3.11/3.12 (tested on 3.13 and 3.14) with a dedicated venv
+- Python 3.12 or newer (tested on 3.13 and 3.14) with a dedicated venv
 
-## Setup
+## Setup (recommended: uv)
+
+[uv](https://docs.astral.sh/uv/) installs the right Python version and all
+packages (including the spaCy model) from `uv.lock` in one step. On Windows
+and Linux it uses the CPU build of PyTorch; on macOS the normal build with MPS.
+
+```bash
+git clone https://github.com/lakshyadangwal/ner-system
+cd ner-system
+uv sync
+```
+
+Then prefix commands with `uv run`, for example:
+
+```bash
+uv run python train.py --smoke
+uv run streamlit run app.py
+uv run python -m unittest discover tests -v
+```
+
+To add or upgrade a package, use `uv add <package>` so that `pyproject.toml`
+and `uv.lock` stay in sync.
+
+## Setup with pip (alternative)
 
 ```bash
 # 1. Create the project folder and virtual environment
@@ -82,7 +107,7 @@ python -m spacy download en_core_web_sm
 python -c "import torch; print(torch.backends.mps.is_available())"
 ```
 
-### Setup on Windows (PowerShell)
+### pip on Windows (PowerShell)
 
 ```powershell
 git clone https://github.com/lakshyadangwal/ner-system
@@ -178,5 +203,6 @@ DATE entities, and merges them with the model entities so that:
 
 ## Reproducibility
 
-All package versions are pinned in `requirements.txt`. Training uses a fixed
+All package versions are locked in `uv.lock` (and pinned in `requirements.txt`
+for pip users). Training uses a fixed
 random seed (`seed=42`) and logs to `training.log`.

@@ -1,0 +1,38 @@
+[project]
+name = "ner-system"
+version = "0.1.0"
+description = "Named Entity Recognition (PER, ORG, LOC, MISC, DATE) with DistilBERT, spaCy and Streamlit"
+readme = "README.md"
+requires-python = ">=3.12"  # numpy 2.5 needs 3.12+
+dependencies = [
+    "accelerate==1.15.0",
+    "datasets==5.2.0",
+    "evaluate==0.4.6",
+    "matplotlib==3.11.2",
+    "numpy==2.5.5",
+    "pandas==3.1.1",
+    "safetensors==0.8.0",
+    "seqeval==1.2.2",
+    "spacy==3.8.18",
+    "streamlit==1.67.0",
+    "tokenizers==0.23.3",
+    "torch==2.15.0",
+    "transformers==5.23.0",
+    # spaCy English model used for DATE entities
+    "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
+]
+
+[tool.uv]
+package = false
+
+# Use the smaller CPU-only PyTorch build on Windows and Linux.
+# macOS gets the normal build from PyPI, which includes MPS support.
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", marker = "sys_platform != 'darwin'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
