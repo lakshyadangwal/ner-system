@@ -1,0 +1,39 @@
+{
+  "model_name": "distilbert-base-cased",
+  "dataset": "tomaarsen/conll2003",
+  "smoke_test": false,
+  "epochs": 3,
+  "overall": {
+    "precision": 0.8855799373040752,
+    "recall": 0.9003186968838527,
+    "f1": 0.8928884986830553,
+    "accuracy": 0.9785506622160008
+  },
+  "per_entity": {
+    "PER": {
+      "precision": 0.9610062893081761,
+      "recall": 0.9449598021026593,
+      "f1": 0.9529154973495478,
+      "support": 1617
+    },
+    "ORG": {
+      "precision": 0.8486956521739131,
+      "recall": 0.8813967489464178,
+      "f1": 0.8647371529828707,
+      "support": 1661
+    },
+    "LOC": {
+      "precision": 0.9180131657690006,
+      "recall": 0.919664268585132,
+      "f1": 0.918837975441749,
+      "support": 1668
+    },
+    "MISC": {
+      "precision": 0.7394179894179894,
+      "recall": 0.7962962962962963,
+      "f1": 0.7668038408779151,
+      "support": 702
+    }
+  },
+  "test_samples": 3453
+}

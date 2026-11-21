@@ -31,8 +31,6 @@ develop-eggs/
 # Generated artifacts (created by running train.py / ner_engine.py)
 model/
 checkpoints/
-metrics.json
-label_distribution.png
 training.log
 
 # Streamlit
